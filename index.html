@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HDOT Project Dashboard</title>
+</head>
+<body>
+    <h1>HDOT Project Dashboard</h1>
+    <div id="reportContainer" style="height:600px"></div>
+    <script>
+        fetch('/api/getEmbedToken', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.embedToken) {
+                document.getElementById("reportContainer").innerText = "Embed token fetched successfully!";
+                // Additional embed logic goes here
+            } else {
+                document.getElementById("reportContainer").innerText = "Failed to fetch token.";
+            }
+        })
+        .catch(err => {
+            document.getElementById("reportContainer").innerText = "Failed to load Power BI report. Please try again later.";
+        });
+    </script>
+</body>
+</html>
