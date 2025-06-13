@@ -3,38 +3,72 @@
 <head>
   <title>HDOT Project Dashboard</title>
   <script src="https://aka.ms/powerbi-client"></script>
+  <style>
+    #reportContainer {
+      height: 600px;
+      width: 100%;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+    #debugOutput {
+      white-space: pre-wrap;
+      font-family: monospace;
+      color: red;
+      background: #f9f9f9;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+  </style>
 </head>
 <body>
   <h1>HDOT Project Dashboard</h1>
-  <div id="reportContainer" style="height:600px;"></div>
+  <div id="reportContainer">Loading report...</div>
+  <div id="debugOutput">Debug Output:</div>
+
   <script>
     async function embedReport() {
+      const debug = document.getElementById("debugOutput");
       try {
-        const res = fetch('/api/getEmbedToken', { method: 'POST' })
-  .then(res => res.text())  // temporarily parse as plain text
-  .then(txt => {
-      console.log("Raw response:", txt);
-      document.getElementById("reportContainer").innerText = "Raw: " + txt;
-  })
-  .catch(err => {
-      document.getElementById("reportContainer").innerText = "Fetch error: " + err.message;
-  });;
-        const data = await res.json();
-        if (!data.embedToken) throw new Error('No embed token');
+        debug.innerText += "\nCalling /api/getEmbedToken...";
+
+        const response = await fetch('/api/getEmbedToken', { method: 'POST' });
+
+        debug.innerText += `\nStatus: ${response.status}`;
+
+        const text = await response.text();
+
+        debug.innerText += `\nRaw Response: ${text}`;
+
+        const data = JSON.parse(text);
+
+        if (!data.embedToken) {
+          throw new Error("No embedToken in response");
+        }
+
+        debug.innerText += `\nEmbed token loaded successfully.`;
 
         const models = window['powerbi-client'].models;
+
         powerbi.embed(document.getElementById('reportContainer'), {
           type: 'report',
           tokenType: models.TokenType.Embed,
           accessToken: data.embedToken,
           embedUrl: 'https://app.powerbi.com/reportEmbed?reportId=4670b8dd-3249-478b-8554-1252db429d0d&autoAuth=true&ctid=355ab7e8-0e36-4bb1-a3e5-7e97253cbc36',
           id: '4670b8dd-3249-478b-8554-1252db429d0d',
-          settings: { panes: { filters: { visible: false }, pageNavigation: { visible: true } } }
+          settings: {
+            panes: {
+              filters: { visible: false },
+              pageNavigation: { visible: true }
+            }
+          }
         });
-      } catch (err) {
-        document.getElementById('reportContainer').innerText = 'Embedding failed: ' + err.message;
+
+      } catch (error) {
+        debug.innerText += `\nError: ${error.message}`;
+        document.getElementById("reportContainer").innerText = "Embedding failed. See debug output below.";
       }
     }
+
     embedReport();
   </script>
 </body>
