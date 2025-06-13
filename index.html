@@ -1,29 +1,33 @@
 <!DOCTYPE html>
-<!-- Trigger deployment: update trigger -->
-
 <html>
 <head>
-    <title>HDOT Project Dashboard</title>
+  <title>HDOT Project Dashboard</title>
+  <script src="https://aka.ms/powerbi-client"></script>
 </head>
 <body>
-    <h1>HDOT Project Dashboard</h1>
-    <div id="reportContainer" style="height:600px"></div>
-    <script>
-        fetch('/api/getEmbedToken', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.embedToken) {
-                document.getElementById("reportContainer").innerText = "Embed token fetched successfully!";
-                // Additional embed logic goes here
-            } else {
-                document.getElementById("reportContainer").innerText = "Failed to fetch token.";
-            }
-        })
-        .catch(err => {
-            document.getElementById("reportContainer").innerText = "Failed to load Power BI report. Please try again later.";
+  <h1>HDOT Project Dashboard</h1>
+  <div id="reportContainer" style="height:600px;"></div>
+  <script>
+    async function embedReport() {
+      try {
+        const res = await fetch('/api/getEmbedToken', { method: 'POST' });
+        const data = await res.json();
+        if (!data.embedToken) throw new Error('No embed token');
+
+        const models = window['powerbi-client'].models;
+        powerbi.embed(document.getElementById('reportContainer'), {
+          type: 'report',
+          tokenType: models.TokenType.Embed,
+          accessToken: data.embedToken,
+          embedUrl: 'https://app.powerbi.com/reportEmbed?reportId=4670b8dd-3249-478b-8554-1252db429d0d&autoAuth=true&ctid=355ab7e8-0e36-4bb1-a3e5-7e97253cbc36',
+          id: '4670b8dd-3249-478b-8554-1252db429d0d',
+          settings: { panes: { filters: { visible: false }, pageNavigation: { visible: true } } }
         });
-    </script>
+      } catch (err) {
+        document.getElementById('reportContainer').innerText = 'Embedding failed: ' + err.message;
+      }
+    }
+    embedReport();
+  </script>
 </body>
 </html>
