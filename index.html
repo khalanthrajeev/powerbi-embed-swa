@@ -10,7 +10,15 @@
   <script>
     async function embedReport() {
       try {
-        const res = await fetch('/api/getEmbedToken', { method: 'POST' });
+        const res = fetch('/api/getEmbedToken', { method: 'POST' })
+  .then(res => res.text())  // temporarily parse as plain text
+  .then(txt => {
+      console.log("Raw response:", txt);
+      document.getElementById("reportContainer").innerText = "Raw: " + txt;
+  })
+  .catch(err => {
+      document.getElementById("reportContainer").innerText = "Fetch error: " + err.message;
+  });;
         const data = await res.json();
         if (!data.embedToken) throw new Error('No embed token');
 
