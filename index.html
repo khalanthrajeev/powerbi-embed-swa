@@ -28,18 +28,16 @@
   <script>
     async function embedReport() {
       const debug = document.getElementById("debugOutput");
+
       try {
         debug.innerText += "\nCalling /api/getEmbedToken...";
-
         const response = await fetch('/api/getEmbedToken', { method: 'POST' });
 
         debug.innerText += `\nStatus: ${response.status}`;
 
-        const text = await  res.json();
+        const data = await response.json();
 
-        debug.innerText += `\nRaw Response: ${text}`;
-
-        const data = JSON.parse(text);
+        debug.innerText += `\nRaw Response: ${JSON.stringify(data, null, 2)}`;
 
         if (!data.embedToken) {
           throw new Error("No embedToken in response");
