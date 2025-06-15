@@ -35,7 +35,7 @@
 
         debug.innerText += `\nStatus: ${response.status}`;
 
-        const text = await response.text();
+        const text = await  res.json();
 
         debug.innerText += `\nRaw Response: ${text}`;
 

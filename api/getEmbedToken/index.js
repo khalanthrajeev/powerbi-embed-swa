@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 module.exports = async function (context, req) {
-  context.log('Processing getEmbedToken request...');
+  context.log('🔵 Starting Power BI Embed Token Generation');
 
   const tenantId = process.env.TENANT_ID;
   const clientId = process.env.CLIENT_ID;
@@ -10,7 +10,7 @@ module.exports = async function (context, req) {
   const reportId = process.env.REPORT_ID;
 
   if (!tenantId || !clientId || !clientSecret || !workspaceId || !reportId) {
-    context.log.error("Missing environment variables.");
+    context.log.error("❌ Missing environment variables.");
     context.res = {
       status: 500,
       body: { error: "Missing environment variables." }
@@ -19,7 +19,7 @@ module.exports = async function (context, req) {
   }
 
   try {
-    // Get access token
+    context.log("🔐 Requesting Azure AD Token...");
     const tokenResponse = await axios.post(
       `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
       new URLSearchParams({
@@ -32,8 +32,9 @@ module.exports = async function (context, req) {
     );
 
     const accessToken = tokenResponse.data.access_token;
+    context.log("✅ Azure AD Token received.");
 
-    // Get embed token
+    context.log("📡 Requesting Embed Token from Power BI...");
     const embedResponse = await axios.post(
       `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}/GenerateToken`,
       { accessLevel: 'view' },
@@ -46,6 +47,7 @@ module.exports = async function (context, req) {
     );
 
     const embedToken = embedResponse.data.token;
+    context.log("✅ Embed Token generated successfully.");
 
     context.res = {
       status: 200,
@@ -54,11 +56,15 @@ module.exports = async function (context, req) {
     };
 
   } catch (err) {
-    context.log.error("Error occurred:", err.message);
+    context.log.error("❌ Error details:", err.response?.data || err.message);
     context.res = {
       status: 500,
       headers: { "Content-Type": "application/json" },
-      body: { error: err.message, stack: err.stack }
+      body: {
+        message: "Embed token generation failed.",
+        error: err.message,
+        response: err.response?.data || null
+      }
     };
   }
 };
