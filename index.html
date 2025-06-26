@@ -1,39 +1,57 @@
-<script>
-  async function getAndRenderReport() {
-    const debugDiv = document.getElementById("debug");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Power BI Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/powerbi-client@2.19.1/dist/powerbi.min.js"></script>
+</head>
+<body>
+  <h2>Power BI Report</h2>
+  <div id="reportContainer" style="height:600px;border:1px solid #ccc;"></div>
 
-    try {
-      const response = await fetch('/api/getEmbedToken');
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        debugDiv.innerText = `Error:\nHTTP ${response.status}:\n${errorText}`;
-        return;
-      }
+  <h3>Debug Output</h3>
+  <pre id="debug">Loading...</pre>
 
-      const data = await response.json();
-      debugDiv.innerText = `✅ Embed Token:\n${JSON.stringify(data, null, 2)}`;
+  <script>
+    async function getAndRenderReport() {
+      const debugDiv = document.getElementById("debug");
 
-      // Load Power BI report
-      const models = window['powerbi-client'].models;
-      const embedConfig = {
-        type: 'report',
-        id: data.reportId,
-        embedUrl: data.embedUrl,
-        accessToken: data.embedToken,
-        tokenType: models.TokenType.Embed,
-        settings: {
-          panes: { filters: { visible: false }, pageNavigation: { visible: true } },
+      try {
+        const response = await fetch('/api/getEmbedToken');
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          debugDiv.innerText = `❌ Error:\nHTTP ${response.status}:\n${errorText}`;
+          return;
         }
-      };
 
-      const reportContainer = document.getElementById('reportContainer');
-      powerbi.embed(reportContainer, embedConfig);
+        const data = await response.json();
+        debugDiv.innerText = `✅ Success: Retrieved token\n${JSON.stringify(data, null, 2)}`;
 
-    } catch (e) {
-      debugDiv.innerText = `Exception:\n${e.stack || e.message}`;
+        const models = window['powerbi-client'].models;
+        const embedConfig = {
+          type: 'report',
+          id: data.reportId,
+          embedUrl: data.embedUrl,
+          accessToken: data.embedToken,
+          tokenType: models.TokenType.Embed,
+          settings: {
+            panes: {
+              filters: { visible: false },
+              pageNavigation: { visible: true }
+            }
+          }
+        };
+
+        const reportContainer = document.getElementById('reportContainer');
+        powerbi.embed(reportContainer, embedConfig);
+
+      } catch (e) {
+        debugDiv.innerText = `❌ Exception:\n${e.stack || e.message}`;
+      }
     }
-  }
 
-  window.onload = getAndRenderReport;
-</script>
+    window.onload = getAndRenderReport;
+  </script>
+</body>
+</html>
