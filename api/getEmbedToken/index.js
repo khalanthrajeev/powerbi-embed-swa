@@ -1,67 +1,52 @@
+
+const msal = require('@azure/msal-node');
 const axios = require('axios');
 
 module.exports = async function (context, req) {
-  context.log('Processing getEmbedToken request...');
+    const clientId = process.env.CLIENT_ID;
+    const clientSecret = process.env.CLIENT_SECRET;
+    const tenantId = process.env.TENANT_ID;
+    const reportId = process.env.REPORT_ID;
+    const workspaceId = process.env.WORKSPACE_ID;
 
-  const tenantId = process.env.TENANT_ID;
-  const clientId = process.env.CLIENT_ID;
-  const clientSecret = process.env.CLIENT_SECRET;
-  const workspaceId = process.env.WORKSPACE_ID;
-  const reportId = process.env.REPORT_ID;
+    const authorityHostUrl = "https://login.microsoftonline.com";
+    const authorityUrl = `${authorityHostUrl}/${tenantId}`;
+    const scope = "https://analysis.windows.net/powerbi/api/.default";
 
-  if (!tenantId || !clientId || !clientSecret || !workspaceId || !reportId) {
-    context.log.error("Missing environment variables.");
-    context.res = {
-      status: 500,
-      body: { error: "Missing environment variables." }
-    };
-    return;
-  }
-
-  try {
-    // Get OAuth access token
-    const tokenResponse = await axios.post(
-      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
-      new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope: 'https://analysis.windows.net/powerbi/api/.default'
-      }),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-    );
-	
-	context.log.error("Embed token:", tokenResponse);
-    const accessToken = tokenResponse.data.access_token;
-
-    // Call Power BI GenerateToken API
-    const embedResponse = await axios.post(
-      `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}/GenerateToken`,
-      { accessLevel: 'view' },
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+    const config = {
+        auth: {
+            clientId: clientId,
+            authority: authorityUrl,
+            clientSecret: clientSecret,
         }
-      }
-    );
-
-    const embedToken = embedResponse.data.token;
-
-    context.res = {
-      status: 200,
-      body: { embedToken }
     };
 
-  } catch (err) {
-    context.log.error("Embed token generation failed:", err.message);
-    context.res = {
-      status: 500,
-      body: {
-        error: err.message,
-        details: err.response?.data || null,
-        stack: err.stack
-      }
-    };
-  }
+    const cca = new msal.ConfidentialClientApplication(config);
+
+    try {
+        const result = await cca.acquireTokenByClientCredential({ scopes: [scope] });
+
+        const accessToken = result.accessToken;
+        const embedUrl = `https://app.powerbi.com/reportEmbed?reportId=${reportId}&groupId=${workspaceId}&autoAuth=true&ctid=${tenantId}`;
+
+        context.res = {
+            status: 200,
+            body: {
+                accessToken,
+                reportId,
+                workspaceId,
+                tenantId,
+                embedUrl,
+                tokenResponse: result
+            }
+        };
+    } catch (err) {
+        context.res = {
+            status: 500,
+            body: {
+                error: err.message,
+                stack: err.stack
+            }
+        };
+    }
 };

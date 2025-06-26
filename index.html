@@ -1,65 +1,48 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>HDOT Project Dashboard</title>
-  <script src="https://aka.ms/powerbi-client"></script>
+  <meta charset="UTF-8">
+  <title>Power BI Embedded</title>
+  <script src="https://cdn.jsdelivr.net/npm/powerbi-client@2.18.8/dist/powerbi.min.js"></script>
   <style>
-    #reportContainer {
-      height: 600px;
-      width: 100%;
-      border: 1px solid #ccc;
-      margin-bottom: 20px;
-    }
-    #debugOutput {
-      white-space: pre-wrap;
-      font-family: monospace;
-      color: red;
-      background: #f9f9f9;
-      padding: 10px;
-      border: 1px solid #ccc;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #embedContainer { height: 600px; border: 1px solid #ccc; margin-top: 20px; }
+    #debugOutput { white-space: pre-wrap; background: #f5f5f5; padding: 10px; border: 1px dashed #aaa; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h1>HDOT Project Dashboard</h1>
-  <div id="reportContainer">Loading report...</div>
-  <div id="debugOutput">Debug Output:</div>
+  <h2>Power BI Embedded Report</h2>
+  <div id="embedContainer"></div>
+  <h3>Debug Output</h3>
+  <div id="debugOutput">Loading...</div>
 
   <script>
-    async function embedReport() {
-      const debug = document.getElementById("debugOutput");
-      try {
-        debug.innerText += "\nCalling /api/getEmbedToken...";
+    async function loadReport() {
+      const response = await fetch('/api/getEmbedToken');
+      const data = await response.json();
 
-        const response = await fetch('/api/getEmbedToken', { method: 'POST' });
-        debug.innerText += `\nStatus: ${response.status}`;
+      document.getElementById('debugOutput').textContent = JSON.stringify(data, null, 2);
 
-        const text = await response.text();
-        debug.innerText += `\nRaw Response:\n${text}`;
+      const models = window['powerbi-client'].models;
+      const embedConfig = {
+        type: 'report',
+        tokenType: models.TokenType.Embed,
+        accessToken: data.accessToken,
+        embedUrl: data.embedUrl,
+        id: data.reportId,
+        settings: {
+          panes: { filters: { visible: false }, pageNavigation: { visible: true } }
+        }
+      };
 
-        const data = JSON.parse(text);
-
-        if (!data.embedToken) throw new Error('No embed token returned');
-
-        const models = window['powerbi-client'].models;
-
-        powerbi.embed(document.getElementById('reportContainer'), {
-          type: 'report',
-          tokenType: models.TokenType.Embed,
-          accessToken: data.embedToken,
-          embedUrl: 'https://app.powerbi.com/reportEmbed?reportId=${reportId}&groupId=${groupId},
-          id: '4670b8dd-3249-478b-8554-1252db429d0d',
-          settings: {
-            panes: { filters: { visible: false }, pageNavigation: { visible: true } }
-          }
-        });
-
-      } catch (err) {
-        debug.innerText += `\nError: ${err.message}`;
-      }
+      const reportContainer = document.getElementById('embedContainer');
+      powerbi.embed(reportContainer, embedConfig);
     }
 
-    embedReport();
+    loadReport().catch(error => {
+      document.getElementById('debugOutput').textContent = 'Error: ' + error;
+    });
   </script>
 </body>
 </html>
