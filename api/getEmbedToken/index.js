@@ -9,7 +9,6 @@ module.exports = async function (context, req) {
   const workspaceId = process.env.WORKSPACE_ID;
 
   const authority = `https://login.microsoftonline.com/${tenantId}`;
-  const tokenEndpoint = `${authority}/oauth2/v2.0/token`;
 
   const msalConfig = {
     auth: {
@@ -41,27 +40,23 @@ module.exports = async function (context, req) {
       }
     );
 
-    const embedToken = embedTokenResponse?.data?.token;
-    const embedUrl = `https://app.powerbi.com/reportEmbed?reportId=${reportId}&groupId=${workspaceId}`;
-
     context.res = {
       status: 200,
       body: {
-        embedToken,
-        embedUrl,
+        embedToken: embedTokenResponse.data.token,
+        embedUrl: `https://app.powerbi.com/reportEmbed?reportId=${reportId}&groupId=${workspaceId}`,
         reportId
       }
     };
   } catch (error) {
-    // Detailed error logging
-    context.log('❌ Error occurred:', error.message);
+    context.log('❌ Error occurred:', error);
     context.res = {
       status: 500,
-      body: {
-        error: error.message,
-        stack: error.stack,
-        raw: error.response?.data || 'No additional error data'
-      }
+      body: JSON.stringify({
+        message: error.message || 'Unknown error',
+        stack: error.stack || '',
+        details: error.response?.data || 'No additional error info from API',
+      })
     };
   }
 };
