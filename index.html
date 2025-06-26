@@ -1,30 +1,67 @@
-<script>
-  async function fetchEmbedToken() {
-    try {
-      const response = await fetch('/api/getEmbedToken');
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error('HTTP ' + response.status + ': ' + errorText);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Power BI Embedded Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/powerbi-client@2.19.1/dist/powerbi.js"></script>
+</head>
+<body>
+  <h1>Power BI Embedded Report Debugger</h1>
+  <div id="debugOutput" style="white-space: pre-wrap; background-color: #f5f5f5; padding: 10px; border: 1px solid #ccc;"></div>
+  <div id="reportContainer" style="height:600px;"></div>
+
+  <script>
+    async function loadReport() {
+      try {
+        const response = await fetch("/api/getEmbedToken");
+        const text = await response.text();
+
+        // Try parsing JSON if possible
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (jsonError) {
+          document.getElementById("debugOutput").innerText = "Invalid JSON:
+" + text;
+          return;
+        }
+
+        document.getElementById("debugOutput").innerText = "Token Response:
+" + JSON.stringify(data, null, 2);
+
+        if (!data.accessToken || !data.reportId || !data.workspaceId) {
+          document.getElementById("debugOutput").innerText += "\nMissing required data from token response.";
+          return;
+        }
+
+        const embedConfig = {
+          type: "report",
+          tokenType: window["powerbi-client"].models.TokenType.Embed,
+          accessToken: data.accessToken,
+          embedUrl: `https://app.powerbi.com/reportEmbed?reportId=${data.reportId}&autoAuth=true&ctid=${data.tenantId}`,
+          id: data.reportId,
+          settings: {
+            panes: {
+              filters: {
+                visible: false
+              },
+              pageNavigation: {
+                visible: true
+              }
+            }
+          }
+        };
+
+        const reportContainer = document.getElementById("reportContainer");
+        const powerbi = new window["powerbi-client"].service.Service(window["powerbi-client"].factories.hpmFactory, window["powerbi-client"].factories.wpmpFactory, window["powerbi-client"].factories.routerFactory);
+        powerbi.embed(reportContainer, embedConfig);
+      } catch (err) {
+        document.getElementById("debugOutput").innerText = "Error loading report:
+" + err.message;
       }
-
-      const data = await response.json();
-      console.log("Token Response:", data);
-
-      document.getElementById('debug').innerText = JSON.stringify(data, null, 2);
-      document.getElementById('accessToken').innerText = data.accessToken;
-
-      const embedUrl = `https://app.powerbi.com/reportEmbed?reportId=${data.reportId}&groupId=${data.workspaceId}&autoAuth=true&ctid=${data.tenantId}`;
-      
-      // Embed report
-      document.getElementById('reportContainer').innerHTML = `
-        <iframe width="100%" height="600px" frameborder="0"
-          src="${embedUrl}&embedToken=${data.accessToken}">
-        </iframe>
-      `;
-    } catch (err) {
-      document.getElementById('debug').innerText = 'Error:\n' + err;
     }
-  }
 
-  fetchEmbedToken();
-</script>
+    loadReport();
+  </script>
+</body>
+</html>
