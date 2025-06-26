@@ -30,7 +30,8 @@ module.exports = async function (context, req) {
       }),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
-
+	
+	context.log.error("Embed token:", tokenResponse);
     const accessToken = tokenResponse.data.access_token;
 
     // Call Power BI GenerateToken API
