@@ -1,44 +1,46 @@
+const axios = require('axios');
 const msal = require('@azure/msal-node');
-const fetch = require('node-fetch');
+
+const config = {
+  auth: {
+    clientId: process.env.CLIENT_ID,
+    authority: 'https://login.microsoftonline.com/' + process.env.TENANT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+  }
+};
+
+const cca = new msal.ConfidentialClientApplication(config);
 
 module.exports = async function (context, req) {
-  const clientId = process.env.CLIENT_ID;
-  const clientSecret = process.env.CLIENT_SECRET;
-  const tenantId = process.env.TENANT_ID;
-  const workspaceId = process.env.WORKSPACE_ID;
-  const reportId = process.env.REPORT_ID;
-
-  const authority = `https://login.microsoftonline.com/${tenantId}`;
-  const scope = "https://analysis.windows.net/powerbi/api/.default";
-
-  const config = {
-    auth: {
-      clientId,
-      authority,
-      clientSecret
-    }
-  };
-
-  const cca = new msal.ConfidentialClientApplication(config);
-
   try {
-    const result = await cca.acquireTokenByClientCredential({ scopes: [scope] });
-    const accessToken = result.accessToken;
+    const tokenResponse = await cca.acquireTokenByClientCredential({
+      scopes: ['https://analysis.windows.net/powerbi/api/.default'],
+    });
+
+    const accessToken = tokenResponse.accessToken;
+    const reportId = process.env.REPORT_ID;
+    const groupId = process.env.WORKSPACE_ID;
+
+    const embedTokenResponse = await axios.post(
+      `https://api.powerbi.com/v1.0/myorg/groups/${groupId}/reports/${reportId}/GenerateToken`,
+      { accessLevel: 'View' },
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
 
     context.res = {
-      status: 200,
+      headers: { 'Content-Type': 'application/json' },
       body: {
-        accessToken,
+        embedToken: embedTokenResponse.data.token,
+        embedUrl: `https://app.powerbi.com/reportEmbed?reportId=${reportId}&groupId=${groupId}`,
         reportId,
-        workspaceId,
-        tenantId
-      }
+        accessToken: accessToken,
+      },
     };
-  } catch (error) {
-    context.log('Token generation error:', error);
+  } catch (err) {
+    context.log('Token generation error:', err.message);
     context.res = {
       status: 500,
-      body: { error: error.message }
+      body: { error: 'Failed to get embed token', details: err.message },
     };
   }
 };
