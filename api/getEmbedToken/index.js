@@ -32,6 +32,7 @@ module.exports = async function (context, req) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
         },
       }
     );
@@ -39,21 +40,23 @@ module.exports = async function (context, req) {
     context.res = {
       headers: { "Content-Type": "application/json" },
       body: {
+        status: "success",
         accessToken: embedResponse.data.token,
         embedUrl: `https://app.powerbi.com/reportEmbed?reportId=${reportId}&groupId=${workspaceId}`,
         reportId,
       },
     };
   } catch (err) {
-    context.log.error("Token generation failed:", err);
-
-    // Full stack and response error debugging
+    // Return full error details in response
     context.res = {
       status: 500,
+      headers: { "Content-Type": "application/json" },
       body: {
-        errorMessage: err.message || "Unknown error",
+        status: "error",
+        message: err.message || "Unexpected error",
         stack: err.stack || null,
         response: err.response?.data || null,
+        config: err.config || null
       },
     };
   }
