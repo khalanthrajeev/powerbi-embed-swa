@@ -1,46 +1,67 @@
 const axios = require('axios');
 const msal = require('@azure/msal-node');
 
-const config = {
-  auth: {
-    clientId: process.env.CLIENT_ID,
-    authority: 'https://login.microsoftonline.com/' + process.env.TENANT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-  }
-};
-
-const cca = new msal.ConfidentialClientApplication(config);
-
 module.exports = async function (context, req) {
+  const clientId = process.env.CLIENT_ID;
+  const clientSecret = process.env.CLIENT_SECRET;
+  const tenantId = process.env.TENANT_ID;
+  const reportId = process.env.REPORT_ID;
+  const workspaceId = process.env.WORKSPACE_ID;
+
+  const authority = `https://login.microsoftonline.com/${tenantId}`;
+  const tokenEndpoint = `${authority}/oauth2/v2.0/token`;
+
+  const msalConfig = {
+    auth: {
+      clientId,
+      authority,
+      clientSecret
+    }
+  };
+
+  const cca = new msal.ConfidentialClientApplication(msalConfig);
+
   try {
     const tokenResponse = await cca.acquireTokenByClientCredential({
       scopes: ['https://analysis.windows.net/powerbi/api/.default'],
     });
 
-    const accessToken = tokenResponse.accessToken;
-    const reportId = process.env.REPORT_ID;
-    const groupId = process.env.WORKSPACE_ID;
+    if (!tokenResponse || !tokenResponse.accessToken) {
+      throw new Error('Access token not retrieved from Azure AD.');
+    }
 
     const embedTokenResponse = await axios.post(
-      `https://api.powerbi.com/v1.0/myorg/groups/${groupId}/reports/${reportId}/GenerateToken`,
+      `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}/GenerateToken`,
       { accessLevel: 'View' },
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      {
+        headers: {
+          Authorization: `Bearer ${tokenResponse.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
     );
 
+    const embedToken = embedTokenResponse?.data?.token;
+    const embedUrl = `https://app.powerbi.com/reportEmbed?reportId=${reportId}&groupId=${workspaceId}`;
+
     context.res = {
-      headers: { 'Content-Type': 'application/json' },
+      status: 200,
       body: {
-        embedToken: embedTokenResponse.data.token,
-        embedUrl: `https://app.powerbi.com/reportEmbed?reportId=${reportId}&groupId=${groupId}`,
-        reportId,
-        accessToken: accessToken,
-      },
+        embedToken,
+        embedUrl,
+        reportId
+      }
     };
-  } catch (err) {
-    context.log('Token generation error:', err.message);
+  } catch (error) {
+    // Detailed error logging
+    context.log('❌ Error occurred:', error.message);
     context.res = {
       status: 500,
-      body: { error: 'Failed to get embed token', details: err.message },
+      body: {
+        error: error.message,
+        stack: error.stack,
+        raw: error.response?.data || 'No additional error data'
+      }
     };
   }
 };
