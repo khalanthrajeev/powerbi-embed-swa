@@ -1,5 +1,5 @@
 name: Azure Static Web Apps CI/CD
-
+app_build_command: 'npm run build'
 on:
   push:
     branches:
