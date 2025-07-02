@@ -1,22 +1,9 @@
 {
   "name": "power-bi-embedded-app-code",
   "version": "1.0.0",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "echo 'No build needed'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/khalanthrajeev/powerbi-embed-swa.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/khalanthrajeev/powerbi-embed-swa/issues"
-  },
-  "homepage": "https://github.com/khalanthrajeev/powerbi-embed-swa#readme",
-  "description": "",
   "dependencies": {
     "@azure/msal-node": "^3.6.1",
     "axios": "^1.10.0",
